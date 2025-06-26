@@ -13,7 +13,7 @@
 [![Hugging Face](https://img.shields.io/badge/🤗%20Hugging%20Face-Spaces-yellow)](https://huggingface.co/spaces)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-[Live Demo](http://localhost:8082) • [Documentation](#documentation) • [Contributing](#contributing)
+[Live Demo](https://image-magic-olive.vercel.app/) • [Documentation](#documentation) • [Contributing](#contributing)
 
 </div>
 
