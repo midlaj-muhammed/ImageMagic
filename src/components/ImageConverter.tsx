@@ -117,8 +117,8 @@ export const transformImageWithAI = async (imageDataUrl: string, enhancedPrompt:
 
     // Use proxy server for Hugging Face Spaces API calls
     console.log('🔄 Using proxy server for Hugging Face Spaces API call...');
-    const apiUrl = process.env.NODE_ENV === 'production'
-      ? 'https://imagemagic-proxy-server.vercel.app/api/transform-image'
+    const apiUrl = import.meta.env.VITE_PROXY_SERVER_URL
+      ? `${import.meta.env.VITE_PROXY_SERVER_URL}/api/transform-image`
       : 'http://localhost:3001/api/transform-image';
 
     const response = await fetch(apiUrl, {

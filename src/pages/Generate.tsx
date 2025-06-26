@@ -80,8 +80,8 @@ const Generate = () => {
       toast.info("🎨 Generating photorealistic image with free AI...");
 
       // Use the proxy server for free Hugging Face Spaces integration
-      const apiUrl = process.env.NODE_ENV === 'production'
-        ? 'https://imagemagic-proxy-server.vercel.app/api/generate-image'
+      const apiUrl = import.meta.env.VITE_PROXY_SERVER_URL
+        ? `${import.meta.env.VITE_PROXY_SERVER_URL}/api/generate-image`
         : 'http://localhost:3001/api/generate-image';
 
       const response = await fetch(apiUrl, {
