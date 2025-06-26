@@ -109,7 +109,7 @@ async function warmUpSpace() {
   try {
     console.log('🔥 Attempting to warm up Hugging Face Space...');
     const { Client } = await import("@gradio/client");
-    const client = await Client.connect("InstantX/InstantStyle");
+    const client = await Client.connect("Hexii/Neural-Style-Transfer");
 
     console.log('✅ Hugging Face Space warmed up successfully');
     return true;
@@ -141,7 +141,7 @@ app.post('/api/transform-image', async (req, res) => {
     const imageBlob = new Blob([imageBuffer], { type: 'image/png' });
 
     // Connect to the Hugging Face Space
-    const app_client = await Client.connect("InstantX/InstantStyle");
+    const app_client = await Client.connect("Hexii/Neural-Style-Transfer");
 
     // Get style image URL based on prompt
     const styleImageUrl = getStyleImageForPrompt(prompt);
@@ -151,13 +151,10 @@ app.post('/api/transform-image', async (req, res) => {
     const styleBuffer = await styleResponse.arrayBuffer();
     const styleBlob = new Blob([styleBuffer], { type: 'image/jpeg' });
 
-    // Make the prediction with InstantStyle parameters
-    const result = await app_client.predict("/style_transfer", {
+    // Make the prediction with proper parameters
+    const result = await app_client.predict("/predict", {
       content_image: handle_file(imageBlob),
       style_image: handle_file(styleBlob),
-      style_strength: 0.8,
-      guidance_scale: 7.5,
-      num_inference_steps: 20
     });
 
     console.log('✅ Hugging Face Spaces transformation completed');
@@ -173,7 +170,7 @@ app.post('/api/transform-image', async (req, res) => {
         imageUrl = transformedImageData.url;
       } else if (transformedImageData.path) {
         // Construct the full URL from the path
-        imageUrl = `https://instantx-instantstyle.hf.space/file=${transformedImageData.path}`;
+        imageUrl = `https://hexii-neural-style-transfer.hf.space/file=${transformedImageData.path}`;
       } else {
         console.error('❌ Could not extract image URL from result:', transformedImageData);
         return res.status(500).json({
