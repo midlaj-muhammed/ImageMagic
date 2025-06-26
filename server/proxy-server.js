@@ -36,6 +36,61 @@ const STYLE_IMAGES = {
   'default': 'https://raw.githubusercontent.com/pytorch/examples/main/fast_neural_style/images/style-images/starry_night.jpg'
 };
 
+// Proxy endpoint for AI Image Generation using Hugging Face Spaces (Free!)
+app.post('/api/generate-image', async (req, res) => {
+  try {
+    const { prompt } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({
+        error: 'Missing required field: prompt'
+      });
+    }
+
+    console.log('🎨 Processing AI image generation request with Hugging Face Spaces:', prompt);
+    console.log('🆓 Using free Hugging Face Spaces - no API key required!');
+
+    // Use a free Hugging Face Space for image generation
+    // Using stabilityai/stable-diffusion-xl-base-1.0 space (free tier)
+    const client = await Client.connect("stabilityai/stable-diffusion-xl-base-1.0");
+
+    const result = await client.predict("/predict", {
+      prompt: prompt,
+      negative_prompt: "blurry, low quality, distorted, deformed, ugly, bad anatomy",
+      num_inference_steps: 20,
+      guidance_scale: 7.5,
+      width: 1024,
+      height: 1024,
+    });
+
+    if (result && result.data && result.data[0]) {
+      // Convert the result to base64 if needed
+      const imageUrl = result.data[0].url || result.data[0];
+
+      // Fetch the image and convert to base64
+      const imageResponse = await fetch(imageUrl);
+      const imageBuffer = await imageResponse.buffer();
+      const base64Image = `data:image/png;base64,${imageBuffer.toString('base64')}`;
+
+      res.json({
+        success: true,
+        imageUrl: base64Image,
+        message: 'Image generated successfully with free Hugging Face Spaces!'
+      });
+    } else {
+      throw new Error('No image data received from Hugging Face Spaces');
+    }
+
+  } catch (error) {
+    console.error('❌ Error generating image:', error);
+    res.status(500).json({
+      error: 'Failed to generate image',
+      details: error.message,
+      suggestion: 'Please try again with a different prompt or check if the Hugging Face Space is available.'
+    });
+  }
+});
+
 // Proxy endpoint for Hugging Face Spaces API
 app.post('/api/transform-image', async (req, res) => {
   try {
@@ -175,6 +230,8 @@ function getStyleImageForPrompt(prompt) {
 app.listen(PORT, () => {
   console.log(`🚀 Hugging Face Spaces API Proxy Server running on http://localhost:${PORT}`);
   console.log(`📋 Health check: http://localhost:${PORT}/health`);
+  console.log(`🎨 Generate endpoint: POST http://localhost:${PORT}/api/generate-image`);
   console.log(`🎨 Transform endpoint: POST http://localhost:${PORT}/api/transform-image`);
-  console.log(`🤗 Using Hugging Face Space: Hexii/Neural-Style-Transfer`);
+  console.log(`🤗 Using Hugging Face Spaces: stabilityai/stable-diffusion-xl-base-1.0 & Hexii/Neural-Style-Transfer`);
+  console.log(`🆓 Completely free - no API keys or billing required!`);
 });

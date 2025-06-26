@@ -18,7 +18,7 @@ const Generate = () => {
   const { saveGeneratedImage } = useFirebaseImages();
   const navigate = useNavigate();
 
-  const HUGGING_FACE_API_KEY = import.meta.env.VITE_HF_TOKEN || "";
+  // No API key required - using free Hugging Face Spaces via proxy server!
 
   // Function to enhance prompts for photorealistic output
   const enhancePromptForPhotorealism = (userPrompt: string): string => {
@@ -77,68 +77,66 @@ const Generate = () => {
       // Enhance the prompt for photorealism
       const enhancedPrompt = enhancePromptForPhotorealism(prompt);
 
-      toast.info("Generating photorealistic image with AI...");
+      toast.info("🎨 Generating photorealistic image with free AI...");
 
-      const response = await fetch(
-        "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0",
-        {
-          headers: {
-            Authorization: `Bearer ${HUGGING_FACE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          method: "POST",
-          body: JSON.stringify({
-            inputs: enhancedPrompt,
-            parameters: {
-              negative_prompt: "blurry, low quality, distorted, painting, artwork, digital art, illustration, drawing, sketch, anime, cartoon, abstract, artistic, stylized, unrealistic, fake, artificial, low resolution, pixelated",
-              num_inference_steps: 60, // Increased for better quality
-              guidance_scale: 8.5, // Slightly higher for better prompt adherence
-              width: 1024,
-              height: 1024
-            }
-          }),
-        }
-      );
+      // Use the proxy server for free Hugging Face Spaces integration
+      const response = await fetch("http://localhost:3001/api/generate-image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt: enhancedPrompt
+        }),
+      });
 
       if (!response.ok) {
-        const errorData = await response.text();
-        
+        const errorData = await response.json();
+
         if (response.status === 503) {
-          toast.error("Model is loading, please try again in a few moments");
+          toast.error("🤖 AI model is loading, please try again in a few moments");
           return;
         } else if (response.status === 429) {
-          toast.error("Rate limit exceeded, please try again later");
-          return;
-        } else if (response.status === 403) {
-          toast.error("API key authentication failed. Please check your Hugging Face API key permissions.");
-          return;
-        } else if (response.status === 401) {
-          toast.error("Invalid API key. Please verify your Hugging Face API key.");
+          toast.error("⏰ Rate limit exceeded, please try again later");
           return;
         } else {
-          throw new Error(`API request failed: ${response.status} - ${errorData}`);
+          throw new Error(errorData.details || `API request failed: ${response.status}`);
         }
       }
 
-      const imageBlob = await response.blob();
-      const imageUrl = URL.createObjectURL(imageBlob);
-      setGeneratedImage(imageUrl);
-      
-      // Convert blob to data URL for Firebase saving
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const dataUrl = reader.result as string;
+      const result = await response.json();
+
+      if (result.success && result.imageUrl) {
+        setGeneratedImage(result.imageUrl);
+
+        // Save to Firebase if user is logged in
         if (user) {
-          await saveGeneratedImage(prompt, dataUrl);
+          await saveGeneratedImage(prompt, result.imageUrl);
         }
-      };
-      reader.readAsDataURL(imageBlob);
-      
-      toast.success("Photorealistic HD image generated successfully!");
+
+        toast.success("🎉 Photorealistic HD image generated successfully with free AI!");
+      } else {
+        throw new Error(result.error || "Failed to generate image");
+      }
       
     } catch (error) {
-      console.error('Error generating image:', error);
-      toast.error(`Failed to generate image: ${error.message}`);
+      console.error('❌ Error generating image:', error);
+
+      // Check if it's a connection error (proxy server not running)
+      if (error.message.includes('fetch') || error.message.includes('Failed to fetch')) {
+        toast.error(`🔧 Proxy server connection failed. Please ensure the proxy server is running:
+
+1. Open terminal in the 'server' directory
+2. Run: npm install
+3. Run: npm start
+4. Refresh this page and try again
+
+📋 The proxy server handles free Hugging Face Spaces API calls securely.
+
+🆓 No API keys or billing required - completely free AI generation!`);
+      } else {
+        toast.error(`Failed to generate image: ${error.message}`);
+      }
     } finally {
       setIsGenerating(false);
     }
