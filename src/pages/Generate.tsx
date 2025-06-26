@@ -14,6 +14,7 @@ const Generate = () => {
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const { user, isLoaded, isSignedIn } = useAuth();
   const { saveGeneratedImage } = useFirebaseImages();
   const navigate = useNavigate();
@@ -73,6 +74,7 @@ const Generate = () => {
     }
 
     setIsGenerating(true);
+    setShowSuccessMessage(false); // Clear any previous success message
     try {
       // Enhance the prompt for photorealism
       const enhancedPrompt = enhancePromptForPhotorealism(prompt);
@@ -99,10 +101,10 @@ const Generate = () => {
 
         if (response.status === 503) {
           toast.error("🤖 AI model is loading, please try again in a few moments");
-          return;
+          throw new Error("AI model is loading");
         } else if (response.status === 429) {
           toast.error("⏰ Rate limit exceeded, please try again later");
-          return;
+          throw new Error("Rate limit exceeded");
         } else {
           throw new Error(errorData.details || `API request failed: ${response.status}`);
         }
@@ -112,13 +114,25 @@ const Generate = () => {
 
       if (result.success && result.imageUrl) {
         setGeneratedImage(result.imageUrl);
+        setIsGenerating(false); // Clear loading state immediately
+        setShowSuccessMessage(true); // Show success message
 
         // Save to Firebase if user is logged in
         if (user) {
-          await saveGeneratedImage(prompt, result.imageUrl);
+          try {
+            await saveGeneratedImage(prompt, result.imageUrl);
+          } catch (firebaseError) {
+            console.error('❌ Firebase save failed:', firebaseError);
+            // Don't throw here, just log the error
+          }
         }
 
         toast.success("🎉 Photorealistic HD image generated successfully with free AI!");
+
+        // Hide success message after 3 seconds
+        setTimeout(() => {
+          setShowSuccessMessage(false);
+        }, 3000);
       } else {
         throw new Error(result.error || "Failed to generate image");
       }
@@ -142,6 +156,7 @@ const Generate = () => {
         toast.error(`Failed to generate image: ${error.message}`);
       }
     } finally {
+      // Ensure loading state is cleared in case of any errors
       setIsGenerating(false);
     }
   };
@@ -269,6 +284,27 @@ const Generate = () => {
                 </CardContent>
               </Card>
 
+
+              {/* Success Message */}
+              {showSuccessMessage && (
+                <Card className="shadow-xl border-0 bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-green-800">Image Generated Successfully!</h3>
+                        <p className="text-green-600">Your photorealistic AI image has been created using free Hugging Face Spaces.</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Generated Image Display */}
               {generatedImage && (
