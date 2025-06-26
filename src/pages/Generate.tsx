@@ -15,7 +15,7 @@ const Generate = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [isWakingUp, setIsWakingUp] = useState(false);
+
   const { user, isLoaded, isSignedIn } = useAuth();
   const { saveGeneratedImage } = useFirebaseImages();
   const navigate = useNavigate();
@@ -68,34 +68,7 @@ const Generate = () => {
     }
   };
 
-  const wakeUpSpace = async () => {
-    setIsWakingUp(true);
-    try {
-      toast.info("🚀 Waking up Hugging Face Space...", { duration: 3000 });
 
-      const apiUrl = import.meta.env.VITE_PROXY_SERVER_URL
-        ? `${import.meta.env.VITE_PROXY_SERVER_URL}/api/generate-image`
-        : 'http://localhost:3001/api/generate-image';
-
-      // Send a simple request to wake up the space
-      await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prompt: "test wake up"
-        }),
-      });
-
-      toast.success("✅ Space is now ready! You can generate images.");
-    } catch (error) {
-      // Ignore errors, this is just to wake up the space
-      toast.info("🔄 Space is starting up. Please wait 30-60 seconds before generating images.");
-    } finally {
-      setIsWakingUp(false);
-    }
-  };
 
   const handleTextToImage = async () => {
     if (!prompt.trim()) {
@@ -143,7 +116,7 @@ const Generate = () => {
             await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
             return attemptGeneration(retryCount + 1);
           } else {
-            toast.error("🚀 Hugging Face Space is taking longer than expected. Please try the 'Wake Up AI Space' button and wait a moment.", {
+            toast.error("🚀 Hugging Face Space is taking longer than expected. Please try again in a few minutes.", {
               duration: 8000
             });
             throw new Error("Hugging Face Space startup timeout");
@@ -311,7 +284,7 @@ const Generate = () => {
                   <div className="space-y-3">
                     <Button
                       onClick={handleTextToImage}
-                      disabled={isGenerating || isWakingUp}
+                      disabled={isGenerating}
                       className="w-full h-12 text-base font-medium bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 transition-all duration-200"
                     >
                       {isGenerating ? (
@@ -327,26 +300,7 @@ const Generate = () => {
                       )}
                     </Button>
 
-                    <Button
-                      onClick={wakeUpSpace}
-                      disabled={isGenerating || isWakingUp}
-                      variant="outline"
-                      className="w-full h-10 text-sm border-2 border-orange-200 hover:border-orange-400 hover:bg-orange-50 text-orange-700"
-                    >
-                      {isWakingUp ? (
-                        <>
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-orange-600 mr-2"></div>
-                          Waking Up AI Space...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                          </svg>
-                          Wake Up AI Space (if slow)
-                        </>
-                      )}
-                    </Button>
+
                   </div>
                 </CardContent>
               </Card>

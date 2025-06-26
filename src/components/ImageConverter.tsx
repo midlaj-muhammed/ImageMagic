@@ -217,14 +217,44 @@ const ImageConverter = () => {
     setDetectedStyle(promptValidation.category);
     setIsConverting(true);
 
-    try {
-      // Show progress message for AI processing
-      toast.info("🤗 Hugging Face AI is processing your image transformation... This may take 30-60 seconds.", {
-        duration: 5000,
-      });
+    // Function to attempt transformation with retries for startup
+    const attemptTransformation = async (retryCount = 0): Promise<string> => {
+      try {
+        // Show progress message for AI processing
+        if (retryCount === 0) {
+          toast.info("🤗 Hugging Face AI is processing your image transformation... This may take 30-60 seconds.", {
+            duration: 5000,
+          });
+        }
 
-      // Use AI transformation instead of canvas filters
-      const transformedImageUrl = await transformImageWithAI(originalImage, promptValidation.enhancedPrompt);
+        // Use AI transformation instead of canvas filters
+        return await transformImageWithAI(originalImage, promptValidation.enhancedPrompt);
+      } catch (error) {
+        // Check if it's a startup error and we haven't exceeded retries
+        if (error.message.includes("starting up") && retryCount < 3) {
+          const waitTime = (retryCount + 1) * 15; // 15, 30, 45 seconds
+          toast.info(`🚀 AI Space is starting up... Retrying transformation in ${waitTime} seconds (${retryCount + 1}/3)`, {
+            duration: waitTime * 1000
+          });
+
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
+          return attemptTransformation(retryCount + 1);
+        }
+
+        // If it's a startup error and we've exceeded retries
+        if (error.message.includes("starting up") && retryCount >= 3) {
+          throw new Error("Hugging Face Space is taking longer than expected to start. Please try again in a few minutes.");
+        }
+
+        // Re-throw other errors
+        throw error;
+      }
+    };
+
+    try {
+      // Attempt transformation with automatic retries
+      const transformedImageUrl = await attemptTransformation();
 
       setConvertedImage(transformedImageUrl);
       toast.success(`🎨 Image successfully transformed using free Hugging Face AI! Style: ${promptValidation.category}`);
@@ -233,8 +263,8 @@ const ImageConverter = () => {
       console.error('AI transformation error:', error);
 
       // Provide specific error messages based on error type
-      if (error.message.includes("starting up")) {
-        toast.error("Hugging Face Space is starting up. Please wait a moment and try again.", {
+      if (error.message.includes("starting up") || error.message.includes("taking longer than expected")) {
+        toast.error("🚀 Hugging Face Space is taking longer than expected to start. Please try again in a few minutes.", {
           duration: 8000,
         });
       } else if (error.message.includes("taking longer")) {
