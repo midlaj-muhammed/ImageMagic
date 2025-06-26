@@ -153,7 +153,7 @@ app.post('/api/transform-image', async (req, res) => {
 
     // Make the prediction with proper parameters
     const result = await app_client.predict("/predict", {
-      content_image: handle_file(imageBlob),
+      content_img: handle_file(imageBlob),
       style_image: handle_file(styleBlob),
     });
 
