@@ -25,9 +25,9 @@ ImageMagic is a cutting-edge web application that harnesses the power of artific
 
 ### 🌟 What Makes ImageMagic Special
 
-- **100% Free AI Processing**: Leverages Hugging Face Spaces for completely free AI transformations
+- **100% Free AI Processing**: Leverages Hugging Face Spaces for completely free AI image generation and transformations
 - **No API Keys Required**: No billing setup or payment information needed
-- **Professional Quality**: State-of-the-art neural style transfer and image generation models
+- **Professional Quality**: State-of-the-art diffusion models and neural style transfer
 - **Modern UI/UX**: Clean, intuitive interface built with React and Tailwind CSS
 - **Real-time Processing**: Fast AI transformations with live progress feedback
 
@@ -202,10 +202,11 @@ HF_TOKEN=your_hugging_face_token
 
 ImageMagic leverages **Hugging Face Spaces** for completely free AI processing:
 
-- **Service**: `Hexii/Neural-Style-Transfer` space
-- **Technology**: Advanced neural style transfer models
+- **Image Generation**: `black-forest-labs/FLUX.1-schnell` space for AI image creation
+- **Image Transformation**: `Hexii/Neural-Style-Transfer` space for style transfer
+- **Technology**: Advanced neural networks and diffusion models
 - **Cost**: 100% free - no API keys or billing required
-- **Quality**: Professional-grade AI transformations
+- **Quality**: Professional-grade AI generation and transformations
 - **Reliability**: Backed by Hugging Face's robust infrastructure
 
 ### How It Works

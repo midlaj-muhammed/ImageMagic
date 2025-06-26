@@ -51,16 +51,16 @@ app.post('/api/generate-image', async (req, res) => {
     console.log('🆓 Using free Hugging Face Spaces - no API key required!');
 
     // Use a free Hugging Face Space for image generation
-    // Using stabilityai/stable-diffusion-xl-base-1.0 space (free tier)
-    const client = await Client.connect("stabilityai/stable-diffusion-xl-base-1.0");
+    // Using a reliable free space: black-forest-labs/FLUX.1-schnell
+    const client = await Client.connect("black-forest-labs/FLUX.1-schnell");
 
-    const result = await client.predict("/predict", {
+    const result = await client.predict("/infer", {
       prompt: prompt,
-      negative_prompt: "blurry, low quality, distorted, deformed, ugly, bad anatomy",
-      num_inference_steps: 20,
-      guidance_scale: 7.5,
+      seed: Math.floor(Math.random() * 1000000),
+      randomize_seed: true,
       width: 1024,
       height: 1024,
+      num_inference_steps: 4,
     });
 
     if (result && result.data && result.data[0]) {
@@ -232,6 +232,6 @@ app.listen(PORT, () => {
   console.log(`📋 Health check: http://localhost:${PORT}/health`);
   console.log(`🎨 Generate endpoint: POST http://localhost:${PORT}/api/generate-image`);
   console.log(`🎨 Transform endpoint: POST http://localhost:${PORT}/api/transform-image`);
-  console.log(`🤗 Using Hugging Face Spaces: stabilityai/stable-diffusion-xl-base-1.0 & Hexii/Neural-Style-Transfer`);
+  console.log(`🤗 Using Hugging Face Spaces: black-forest-labs/FLUX.1-schnell & Hexii/Neural-Style-Transfer`);
   console.log(`🆓 Completely free - no API keys or billing required!`);
 });
