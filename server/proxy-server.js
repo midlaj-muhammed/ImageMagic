@@ -85,17 +85,20 @@ app.post('/api/generate-image', async (req, res) => {
     console.error('❌ Error generating image:', error);
 
     // Check if it's a "starting up" error
-    if (error.message.includes('starting up') || error.message.includes('loading') || error.message.includes('503')) {
+    if (error.message.includes('starting up') || error.message.includes('loading') || error.message.includes('503') || error.message.includes('Space is starting')) {
+      console.log('🚀 Hugging Face Space is starting up, sending 503 status');
       res.status(503).json({
         error: 'Hugging Face Space is starting up. Please wait a moment and try again.',
         details: error.message,
-        suggestion: 'The AI model is waking up from sleep mode. This usually takes 30-60 seconds. Please wait and try again.'
+        suggestion: 'The AI model is waking up from sleep mode. This usually takes 30-60 seconds. Please wait and try again.',
+        retryable: true
       });
     } else {
       res.status(500).json({
         error: 'Failed to generate image',
         details: error.message,
-        suggestion: 'Please try again with a different prompt or check if the Hugging Face Space is available.'
+        suggestion: 'Please try again with a different prompt or check if the Hugging Face Space is available.',
+        retryable: false
       });
     }
   }

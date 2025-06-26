@@ -105,9 +105,12 @@ const Generate = () => {
 
     setIsGenerating(true);
     setShowSuccessMessage(false); // Clear any previous success message
-    try {
-      // Enhance the prompt for photorealism
-      const enhancedPrompt = enhancePromptForPhotorealism(prompt);
+
+    // Function to attempt image generation with retries for startup
+    const attemptGeneration = async (retryCount = 0): Promise<any> => {
+      try {
+        // Enhance the prompt for photorealism
+        const enhancedPrompt = enhancePromptForPhotorealism(prompt);
 
       toast.info("🎨 Generating photorealistic image with free AI...");
 
@@ -130,10 +133,21 @@ const Generate = () => {
         const errorData = await response.json();
 
         if (response.status === 503 || errorData.error?.includes('starting up')) {
-          toast.error("🚀 Hugging Face Space is starting up. Please wait 30-60 seconds and try again.", {
-            duration: 5000
-          });
-          throw new Error("Hugging Face Space is starting up");
+          if (retryCount < 3) {
+            const waitTime = (retryCount + 1) * 15; // 15, 30, 45 seconds
+            toast.info(`🚀 AI Space is starting up... Retrying in ${waitTime} seconds (${retryCount + 1}/3)`, {
+              duration: waitTime * 1000
+            });
+
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
+            return attemptGeneration(retryCount + 1);
+          } else {
+            toast.error("🚀 Hugging Face Space is taking longer than expected. Please try the 'Wake Up AI Space' button and wait a moment.", {
+              duration: 8000
+            });
+            throw new Error("Hugging Face Space startup timeout");
+          }
         } else if (response.status === 429) {
           toast.error("⏰ Rate limit exceeded, please try again later");
           throw new Error("Rate limit exceeded");
@@ -142,7 +156,18 @@ const Generate = () => {
         }
       }
 
-      const result = await response.json();
+        const result = await response.json();
+        return result; // Return the result for the main function to handle
+      } catch (error) {
+        // If it's a startup error and we haven't exceeded retries, it will be handled above
+        // Otherwise, re-throw the error
+        throw error;
+      }
+    };
+
+    try {
+      // Attempt generation with automatic retries
+      const result = await attemptGeneration();
 
       if (result.success && result.imageUrl) {
         setGeneratedImage(result.imageUrl);
