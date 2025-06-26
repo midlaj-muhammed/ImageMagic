@@ -104,6 +104,21 @@ app.post('/api/generate-image', async (req, res) => {
   }
 });
 
+// Helper function to warm up the Hugging Face Space
+async function warmUpSpace() {
+  try {
+    console.log('🔥 Attempting to warm up Hugging Face Space...');
+    const { Client } = await import("@gradio/client");
+    const client = await Client.connect("InstantX/InstantStyle");
+
+    console.log('✅ Hugging Face Space warmed up successfully');
+    return true;
+  } catch (error) {
+    console.log('⚠️ Space warm-up failed (this is normal for cold starts):', error.message);
+    return false;
+  }
+}
+
 // Proxy endpoint for Hugging Face Spaces API
 app.post('/api/transform-image', async (req, res) => {
   try {
@@ -117,13 +132,16 @@ app.post('/api/transform-image', async (req, res) => {
 
     console.log('🤖 Processing AI transformation request with Hugging Face Spaces:', prompt);
 
+    // Try to warm up the space first
+    await warmUpSpace();
+
     // Convert data URL to blob for Hugging Face Spaces API
     const base64Data = imageDataUrl.split(',')[1];
     const imageBuffer = Buffer.from(base64Data, 'base64');
     const imageBlob = new Blob([imageBuffer], { type: 'image/png' });
 
     // Connect to the Hugging Face Space
-    const app_client = await Client.connect("Hexii/Neural-Style-Transfer");
+    const app_client = await Client.connect("InstantX/InstantStyle");
 
     // Get style image URL based on prompt
     const styleImageUrl = getStyleImageForPrompt(prompt);
@@ -133,14 +151,14 @@ app.post('/api/transform-image', async (req, res) => {
     const styleBuffer = await styleResponse.arrayBuffer();
     const styleBlob = new Blob([styleBuffer], { type: 'image/jpeg' });
 
-    // Make the prediction with proper parameters
-    const result = await app_client.predict("/predict", [
-      handle_file(imageBlob),     // content_img
-      handle_file(styleBlob),     // style_image
-      1.0,                        // style_weight (0-2)
-      1.0,                        // content_weight (1-5)
-      false                       // style_blur
-    ]);
+    // Make the prediction with InstantStyle parameters
+    const result = await app_client.predict("/style_transfer", {
+      content_image: handle_file(imageBlob),
+      style_image: handle_file(styleBlob),
+      style_strength: 0.8,
+      guidance_scale: 7.5,
+      num_inference_steps: 20
+    });
 
     console.log('✅ Hugging Face Spaces transformation completed');
 
@@ -155,7 +173,7 @@ app.post('/api/transform-image', async (req, res) => {
         imageUrl = transformedImageData.url;
       } else if (transformedImageData.path) {
         // Construct the full URL from the path
-        imageUrl = `https://hexii-neural-style-transfer.hf.space/file=${transformedImageData.path}`;
+        imageUrl = `https://instantx-instantstyle.hf.space/file=${transformedImageData.path}`;
       } else {
         console.error('❌ Could not extract image URL from result:', transformedImageData);
         return res.status(500).json({
@@ -183,11 +201,18 @@ app.post('/api/transform-image', async (req, res) => {
     const errorMessage = error?.message || error?.toString() || 'Unknown error occurred';
 
     // Handle specific Hugging Face errors
-    if (errorMessage.includes('Space is not running') || errorMessage.includes('not running')) {
+    if (errorMessage.includes('Space is not running') ||
+        errorMessage.includes('not running') ||
+        errorMessage.includes('starting up') ||
+        errorMessage.includes('loading') ||
+        errorMessage.includes('503') ||
+        errorMessage.includes('Service Unavailable') ||
+        errorMessage.includes('Space is starting')) {
       return res.status(503).json({
-        error: 'Service temporarily unavailable',
-        message: 'The AI transformation service is currently starting up. Please try again in a moment.',
-        details: errorMessage
+        error: 'Hugging Face Space is starting up. Please wait a moment and try again.',
+        message: 'The AI transformation service is currently starting up. This usually takes 60-90 seconds.',
+        details: errorMessage,
+        retryable: true
       });
     }
 
@@ -202,9 +227,10 @@ app.post('/api/transform-image', async (req, res) => {
     // Handle Gradio-specific errors
     if (error?.type === 'status' && error?.stage === 'error') {
       return res.status(503).json({
-        error: 'Service temporarily unavailable',
+        error: 'Hugging Face Space is starting up. Please wait a moment and try again.',
         message: 'The AI transformation service encountered an error. Please try again.',
-        details: 'Space processing error - this is usually temporary'
+        details: 'Space processing error - this is usually temporary',
+        retryable: true
       });
     }
 

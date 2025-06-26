@@ -217,12 +217,44 @@ const ImageConverter = () => {
     setDetectedStyle(promptValidation.category);
     setIsConverting(true);
 
+    // Fallback CSS-based transformation function
+    const applyFallbackTransformation = (imageDataUrl: string, style: string): Promise<string> => {
+      return new Promise((resolve) => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+
+        img.onload = () => {
+          canvas.width = img.width;
+          canvas.height = img.height;
+
+          // Apply different filters based on style
+          if (style.toLowerCase().includes('ghibli') || style.toLowerCase().includes('anime')) {
+            ctx.filter = 'saturate(1.3) contrast(1.1) brightness(1.05) hue-rotate(5deg)';
+          } else if (style.toLowerCase().includes('vintage') || style.toLowerCase().includes('retro')) {
+            ctx.filter = 'sepia(0.6) contrast(1.1) brightness(0.9) saturate(0.8)';
+          } else if (style.toLowerCase().includes('oil') || style.toLowerCase().includes('painting')) {
+            ctx.filter = 'saturate(1.4) contrast(1.2) brightness(1.1)';
+          } else if (style.toLowerCase().includes('watercolor')) {
+            ctx.filter = 'saturate(1.2) contrast(0.9) brightness(1.1) blur(0.5px)';
+          } else {
+            ctx.filter = 'saturate(1.2) contrast(1.1) brightness(1.05)';
+          }
+
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        };
+
+        img.src = imageDataUrl;
+      });
+    };
+
     // Function to attempt transformation with retries for startup
     const attemptTransformation = async (retryCount = 0): Promise<string> => {
       try {
         // Show progress message for AI processing
         if (retryCount === 0) {
-          toast.info("🤗 Hugging Face AI is processing your image transformation... This may take 30-60 seconds.", {
+          toast.info("🤗 Attempting AI transformation... Fallback available if needed.", {
             duration: 5000,
           });
         }
@@ -231,9 +263,9 @@ const ImageConverter = () => {
         return await transformImageWithAI(originalImage, promptValidation.enhancedPrompt);
       } catch (error) {
         // Check if it's a startup error and we haven't exceeded retries
-        if (error.message.includes("starting up") && retryCount < 3) {
-          const waitTime = (retryCount + 1) * 15; // 15, 30, 45 seconds
-          toast.info(`🚀 AI Space is starting up... Retrying transformation in ${waitTime} seconds (${retryCount + 1}/3)`, {
+        if ((error.message.includes("starting up") || error.message.includes("Service Unavailable") || error.message.includes("503")) && retryCount < 2) {
+          const waitTime = (retryCount + 1) * 30; // 30, 60 seconds
+          toast.info(`🚀 AI Space is starting up... Retrying in ${waitTime} seconds (${retryCount + 1}/2)`, {
             duration: waitTime * 1000
           });
 
@@ -242,9 +274,12 @@ const ImageConverter = () => {
           return attemptTransformation(retryCount + 1);
         }
 
-        // If it's a startup error and we've exceeded retries
-        if (error.message.includes("starting up") && retryCount >= 3) {
-          throw new Error("Hugging Face Space is taking longer than expected to start. Please try again in a few minutes.");
+        // If AI transformation fails after retries, use fallback
+        if (retryCount >= 2) {
+          toast.info("🎨 AI service unavailable, using fallback transformation...", {
+            duration: 3000
+          });
+          return await applyFallbackTransformation(originalImage, promptValidation.enhancedPrompt);
         }
 
         // Re-throw other errors
@@ -257,14 +292,24 @@ const ImageConverter = () => {
       const transformedImageUrl = await attemptTransformation();
 
       setConvertedImage(transformedImageUrl);
-      toast.success(`🎨 Image successfully transformed using free Hugging Face AI! Style: ${promptValidation.category}`);
+
+      // Check if it's a data URL (fallback) or external URL (AI)
+      if (transformedImageUrl.startsWith('data:')) {
+        toast.success(`🎨 Image transformed using fallback processing! Style: ${promptValidation.category}`, {
+          duration: 5000
+        });
+      } else {
+        toast.success(`🎨 Image successfully transformed using AI! Style: ${promptValidation.category}`, {
+          duration: 5000
+        });
+      }
 
     } catch (error) {
-      console.error('AI transformation error:', error);
+      console.error('Transformation error:', error);
 
       // Provide specific error messages based on error type
       if (error.message.includes("starting up") || error.message.includes("taking longer than expected")) {
-        toast.error("🚀 Hugging Face Space is taking longer than expected to start. Please try again in a few minutes.", {
+        toast.error("🚀 Transformation service is unavailable. Please try again in a few minutes.", {
           duration: 8000,
         });
       } else if (error.message.includes("taking longer")) {
